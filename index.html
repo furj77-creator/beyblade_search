@@ -46,7 +46,6 @@
       box-shadow: 0 8px 25px rgba(0,0,0,0.8); border: 2px solid rgba(255,255,255,0.2);
     }
 
-    /* 圖片顯示容器 */
     #result-img-wrap {
       width: 100%; height: 140px; margin-bottom: 8px;
       display: flex; align-items: center; justify-content: center;
@@ -166,6 +165,7 @@
 
         const rows = json.table.rows;
         
+        // 欄位精確對應：
         // 左區塊：Model(A=0), Price(C=2), Priority(D=3), Note(E=4), ImgUrl(F=5)
         // 右區塊：Model(H=7), Price(J=9), Priority(K=10), Note(L=11), ImgUrl(M=12)
         const blocks = [
@@ -173,8 +173,11 @@
           { model: 7, price: 9, priority: 10, note: 11, img: 12 }
         ];
 
-        rows.forEach(row => {
-          if (!row.c) return;
+        // 跳過前 5 行（標題與對照表），從第 6 行（索引 5）開始讀取真正的 Beyblade 資料
+        for (let i = 5; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row.c) continue;
+
           blocks.forEach(b => {
             const modelCell = row.c[b.model];
             if (!modelCell || modelCell.v === null || modelCell.v === undefined) return;
@@ -187,16 +190,31 @@
             const noteCell = row.c[b.note];
             const imgCell = row.c[b.img];
 
-            const price = (priceCell && priceCell.v !== null && priceCell.v !== undefined) ? priceCell.v : null;
-            const priority = (priorityCell && priorityCell.v) ? String(priorityCell.v).trim() : 'Low';
+            // 處理 Google Sheet 返回的 JSON 物件或純數值格式
+            const price = (priceCell && priceCell.v !== null && priceCell.v !== undefined) 
+              ? (priceCell.f ? priceCell.f : priceCell.v) 
+              : null;
+
+            const priority = (priorityCell && priorityCell.v) 
+              ? String(priorityCell.f ? priorityCell.f : priorityCell.v).trim() 
+              : 'Low';
+
             const note = (noteCell && noteCell.v) ? String(noteCell.v).trim() : '';
             
-            let imgUrl = (imgCell && imgCell.v) ? String(imgCell.v).trim() : '';
+            // 讀取 F 欄 / M 欄 的圖片 URL (支援物件裡的 .v 或文字)
+            let imgUrl = '';
+            if (imgCell) {
+              if (typeof imgCell.v === 'string') {
+                imgUrl = imgCell.v.trim();
+              } else if (imgCell.v && typeof imgCell.v === 'object') {
+                imgUrl = String(imgCell.v).trim();
+              }
+            }
 
             const cleanKey = model.replace(/[^A-Z0-9]/g, '');
             dbData[cleanKey] = { rawModel: model, price, priority, note, imgUrl };
           });
-        });
+        }
 
         document.getElementById('status').innerText = '✅ 清單已同步 (' + Object.keys(dbData).length + ' 款模型)';
       } catch (e) {
@@ -282,9 +300,15 @@
       }
 
       modelEl.innerText = model;
-      priceEl.innerText = (price !== null && price !== undefined && price !== '')
-        ? `原價：¥${Number(price).toLocaleString()}`
-        : '原價：--';
+      
+      // 原價顯示處理
+      if (price !== null && price !== undefined && price !== '') {
+        const cleanPrice = String(price).replace(/[^0-9]/g, '');
+        priceEl.innerText = cleanPrice ? `原價：¥${Number(cleanPrice).toLocaleString()}` : `原價：¥${price}`;
+      } else {
+        priceEl.innerText = '原價：--';
+      }
+
       priorityEl.innerText = priority;
       noteEl.innerText = note ? `備註：${note}` : '（無備註）';
 
