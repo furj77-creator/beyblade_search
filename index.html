@@ -45,6 +45,17 @@
       transition: all 0.2s ease; display: none; background: #222;
       box-shadow: 0 8px 25px rgba(0,0,0,0.8); border: 2px solid rgba(255,255,255,0.2);
     }
+
+    /* 圖片顯示容器 */
+    #result-img-wrap {
+      width: 100%; height: 140px; margin-bottom: 8px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.3); border-radius: 8px; overflow: hidden;
+    }
+    #result-img {
+      max-width: 100%; max-height: 100%; object-fit: contain;
+    }
+
     #result-model { font-size: 26px; font-weight: 900; letter-spacing: 1px; }
     #result-price { font-size: 17px; font-weight: 700; margin-top: 2px; opacity: 0.95; }
     #result-priority { font-size: 20px; font-weight: 800; margin: 4px 0; text-transform: uppercase; }
@@ -71,44 +82,29 @@
       box-shadow: 0 4px 0 rgba(0,0,0,0.6);
     }
 
-    /* 增強按壓視覺回饋 */
     button:active {
-      transform: translateY(4px); /* 下沉幅度加大 */
-      box-shadow: 0 0px 0 rgba(0,0,0,0.6); /* 陰影完全消失，營造按到底的感覺 */
-      background-color: #555 !important; /* 按下時變亮灰 */
+      transform: translateY(4px);
+      box-shadow: 0 0px 0 rgba(0,0,0,0.6);
+      background-color: #555 !important;
     }
 
     .keypad-left {
       width: 35%; display: flex; flex-direction: column; gap: 6px; padding: 8px;
       background: #101010; border-right: 1px solid rgba(255,255,255,0.1);
     }
-    .keypad-left button {
-      flex: 1; background: #282828;
-    }
-    
-    /* 模式掣已選狀態 */
+    .keypad-left button { flex: 1; background: #282828; }
     .keypad-left button.active {
       background: #0288d1; border-color: #03a9f4; color: #fff;
       box-shadow: 0 0 8px rgba(3,169,244,0.5);
     }
-    /* 確保已選模式掣按壓時也有反應 */
-    .keypad-left button.active:active {
-      background: #02669e !important;
-    }
+    .keypad-left button.active:active { background: #02669e !important; }
 
     .keypad-right {
       width: 65%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px;
     }
-    .keypad-right button {
-      background: #222;
-    }
-    .keypad-right button.btn-del { 
-        background-color: #8f2d2d; 
-        border-color: #e57373; 
-    }
-    .keypad-right button.btn-del:active {
-        background-color: #b71c1c !important; /* 刪除掣按下時變深紅 */
-    }
+    .keypad-right button { background: #222; }
+    .keypad-right button.btn-del { background-color: #8f2d2d; border-color: #e57373; }
+    .keypad-right button.btn-del:active { background-color: #b71c1c !important; }
   </style>
 </head>
 <body>
@@ -119,6 +115,9 @@
     <div id="not-found-msg">⚠️ 查無此型號資料</div>
 
     <div id="result-card">
+      <div id="result-img-wrap" style="display: none;">
+        <img id="result-img" src="" alt="Beyblade Image">
+      </div>
       <div id="result-model">--</div>
       <div id="result-price">--</div>
       <div id="result-priority">--</div>
@@ -155,12 +154,8 @@
     let selectedMode = "";
     let inputNumbers = "";
 
-    // 觸覺回饋 (震動)
     function triggerHaptic() {
-      // 檢查瀏覽器是否支援 vibrate API (Android 支援，iOS Safari 預設不支援)
-      if (navigator.vibrate) {
-        navigator.vibrate(20); // 震動 20 毫秒，模擬輕微點擊
-      }
+      if (navigator.vibrate) navigator.vibrate(20);
     }
 
     async function fetchSheetData() {
@@ -170,9 +165,12 @@
         const json = JSON.parse(text.substring(47, text.length - 2));
 
         const rows = json.table.rows;
+        
+        // 左區塊：Model(A=0), Price(C=2), Priority(D=3), Note(E=4), ImgUrl(F=5)
+        // 右區塊：Model(H=7), Price(J=9), Priority(K=10), Note(L=11), ImgUrl(M=12)
         const blocks = [
-          { model: 0, price: 1, priority: 2, note: 3 },
-          { model: 7, price: 8, priority: 9, note: 10 }
+          { model: 0, price: 2, priority: 3, note: 4, img: 5 },
+          { model: 7, price: 9, priority: 10, note: 11, img: 12 }
         ];
 
         rows.forEach(row => {
@@ -187,13 +185,16 @@
             const priceCell = row.c[b.price];
             const priorityCell = row.c[b.priority];
             const noteCell = row.c[b.note];
+            const imgCell = row.c[b.img];
 
             const price = (priceCell && priceCell.v !== null && priceCell.v !== undefined) ? priceCell.v : null;
             const priority = (priorityCell && priorityCell.v) ? String(priorityCell.v).trim() : 'Low';
             const note = (noteCell && noteCell.v) ? String(noteCell.v).trim() : '';
+            
+            let imgUrl = (imgCell && imgCell.v) ? String(imgCell.v).trim() : '';
 
             const cleanKey = model.replace(/[^A-Z0-9]/g, '');
-            dbData[cleanKey] = { rawModel: model, price, priority, note };
+            dbData[cleanKey] = { rawModel: model, price, priority, note, imgUrl };
           });
         });
 
@@ -210,7 +211,7 @@
     }
 
     function selectMode(mode, btn) {
-      triggerHaptic(); // 加入震動
+      triggerHaptic();
       selectedMode = mode;
       document.querySelectorAll('.keypad-left button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -219,7 +220,7 @@
     }
 
     function pressNumber(num) {
-      triggerHaptic(); // 加入震動
+      triggerHaptic();
       if (inputNumbers.length >= 2) {
         inputNumbers = inputNumbers.slice(1) + num;
       } else {
@@ -230,7 +231,7 @@
     }
 
     function clearNumber() {
-      triggerHaptic(); // 加入震動
+      triggerHaptic();
       if (inputNumbers.length > 0) {
         inputNumbers = inputNumbers.slice(0, -1);
         updatePreview();
@@ -239,7 +240,7 @@
     }
 
     function clearAll() {
-      triggerHaptic(); // 加入震動
+      triggerHaptic();
       inputNumbers = "";
       selectedMode = "";
       document.querySelectorAll('.keypad-left button').forEach(b => b.classList.remove('active'));
@@ -253,7 +254,7 @@
         const item = dbData[queryKey];
 
         if (item) {
-          showResult(item.rawModel, item.price, item.priority, item.note);
+          showResult(item.rawModel, item.price, item.priority, item.note, item.imgUrl);
         } else {
           showNotFound();
         }
@@ -262,7 +263,7 @@
       }
     }
 
-    function showResult(model, price, priority, note) {
+    function showResult(model, price, priority, note, imgUrl) {
       document.getElementById('not-found-msg').style.display = 'none';
 
       const card = document.getElementById('result-card');
@@ -270,6 +271,15 @@
       const priceEl = document.getElementById('result-price');
       const priorityEl = document.getElementById('result-priority');
       const noteEl = document.getElementById('result-note');
+      const imgWrap = document.getElementById('result-img-wrap');
+      const imgEl = document.getElementById('result-img');
+
+      if (imgUrl && imgUrl.startsWith('http')) {
+        imgEl.src = imgUrl;
+        imgWrap.style.display = 'flex';
+      } else {
+        imgWrap.style.display = 'none';
+      }
 
       modelEl.innerText = model;
       priceEl.innerText = (price !== null && price !== undefined && price !== '')
