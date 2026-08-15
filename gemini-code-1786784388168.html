@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Beyblade X Quick Priority Search</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overscroll-behavior: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #000; color: #fff; overflow: hidden;
+      display: flex; flex-direction: column;
+      height: 100vh; height: 100dvh;
+    }
+
+    /* 上半畫面：結果顯示區 */
+    #top-container {
+      flex: 1 1 auto; width: 100%; min-height: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 16px; position: relative; background: #111;
+    }
+
+    #result-card {
+      width: 90vw; max-width: 380px;
+      padding: 20px; border-radius: 16px; text-align: center;
+      transition: all 0.2s ease; display: none; background: #222;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 10;
+      max-height: 45vh; overflow-y: auto; border: 2px solid rgba(255,255,255,0.2);
+    }
+    #result-model { font-size: 32px; font-weight: 900; letter-spacing: 1px; }
+    #result-price { font-size: 20px; font-weight: 700; margin-top: 4px; opacity: 0.95; }
+    #result-priority { font-size: 24px; font-weight: 800; margin: 8px 0; text-transform: uppercase; }
+    #result-note { font-size: 15px; line-height: 1.4; background: rgba(0,0,0,0.25); padding: 10px; border-radius: 8px; text-align: left; }
+
+    /* 優先級色彩控制 */
+    .bg-very-high { background: #1b5e20 !important; border-color: #4caf50 !important; color: #ffffff; }
+    .bg-high      { background: #0d47a1 !important; border-color: #2196f3 !important; color: #ffffff; }
+    .bg-medium    { background: #e65100 !important; border-color: #ff9800 !important; color: #ffffff; }
+    .bg-low       { background: #424242 !important; border-color: #9e9e9e !important; color: #e0e0e0; }
+
+    #status {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,0.1); padding: 6px 16px; border-radius: 20px;
+      font-size: 13px; color: #aaa; white-space: nowrap; border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    #not-found-msg {
+      font-size: 18px; color: #ff5252; font-weight: bold; display: none;
+      background: rgba(255,82,82,0.1); padding: 10px 20px; border-radius: 8px; border: 1px solid #ff5252;
+    }
+
+    /* 下半畫面：自訂輸入法 */
+    #input-keypad-wrap {
+      flex: 0 0 50vh; width: 100%;
+      display: flex; background: #1a1a1a;
+      border-top: 2px solid rgba(255,255,255,0.2);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* 下半左邊：BX, CX, UX */
+    .keypad-left {
+      width: 40%; display: flex; flex-direction: column; gap: 8px; padding: 12px;
+      background: #141414; border-right: 1px solid rgba(255,255,255,0.1);
+    }
+    .keypad-left button {
+      flex: 1; font-size: 1.5rem; font-weight: bold; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 10px;
+      background: #282828; color: #fff; transition: background 0.1s;
+    }
+    .keypad-left button.active { background: #0288d1; border-color: #03a9f4; color: #fff; }
+
+    /* 下半右邊：12宮格數字鍵盤 */
+    .keypad-right {
+      width: 60%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px;
+    }
+    .keypad-right button {
+      font-size: 1.5rem; font-weight: bold; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+      background: #222; color: #fff; transition: background 0.1s;
+    }
+    .keypad-right button:active { background: #444; }
+    .keypad-right button.btn-del { background-color: #8f2d2d; border-color: #e57373; }
+  </style>
+</head>
+<body>
+
+  <!-- 上半畫面：顯示結果卡片 -->
+  <div id="top-container">
+    <div id="status">正在同步 Google Sheet 資料...</div>
+    <div id="not-found-msg">⚠️ 查無此型號資料</div>
+
+    <div id="result-card">
+      <div id="result-model">--</div>
+      <div id="result-price">--</div>
+      <div id="result-priority">--</div>
+      <div id="result-note">--</div>
+    </div>
+  </div>
+
+  <!-- 下半畫面：自訂輸入法鍵盤 -->
+  <div id="input-keypad-wrap">
+    <!-- 左邊：模式掣 -->
+    <div class="keypad-left">
+      <button onclick="selectMode('BX', this)">BX</button>
+      <button onclick="selectMode('CX', this)">CX</button>
+      <button onclick="selectMode('UX', this)">UX</button>
+    </div>
+
+    <!-- 右邊：數字鍵盤 -->
+    <div class="keypad-right">
+      <button onclick="pressNumber('7')">7</button>
+      <button onclick="pressNumber('8')">8</button>
+      <button onclick="pressNumber('9')">9</button>
+      <button onclick="pressNumber('4')">4</button>
+      <button onclick="pressNumber('5')">5</button>
+      <button onclick="pressNumber('6')">6</button>
+      <button onclick="pressNumber('1')">1</button>
+      <button onclick="pressNumber('2')">2</button>
+      <button onclick="pressNumber('3')">3</button>
+      <button class="btn-del" onclick="clearNumber()">⌫</button>
+      <button onclick="pressNumber('0')">0</button>
+      <button onclick="clearAll()" style="font-size: 1rem;">清空</button>
+    </div>
+  </div>
+
+  <script>
+    const SHEET_ID = '1wNFpe9U1bgbRGtU6uNlpkpFgrX-ictuisUpOLDqbmG4';
+    let dbData = {};
+    let selectedMode = "";
+    let inputNumbers = "";
+
+    // 1. 同步 Google Sheet 資料
+    async function fetchSheetData() {
+      try {
+        const response = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`);
+        const text = await response.text();
+        const json = JSON.parse(text.substring(47, text.length - 2));
+
+        const rows = json.table.rows;
+        const blocks = [
+          { model: 0, price: 1, priority: 2, note: 3 },  // A, B, C, D
+          { model: 7, price: 8, priority: 9, note: 10 }  // H, I, J, K
+        ];
+
+        rows.forEach(row => {
+          if (!row.c) return;
+          blocks.forEach(b => {
+            const modelCell = row.c[b.model];
+            if (!modelCell || modelCell.v === null || modelCell.v === undefined) return;
+
+            const model = String(modelCell.v).trim().toUpperCase();
+            if (!(model.includes('BX') || model.includes('UX') || model.includes('CX'))) return;
+
+            const priceCell = row.c[b.price];
+            const priorityCell = row.c[b.priority];
+            const noteCell = row.c[b.note];
+
+            const price = (priceCell && priceCell.v !== null && priceCell.v !== undefined) ? priceCell.v : null;
+            const priority = (priorityCell && priorityCell.v) ? String(priorityCell.v).trim() : 'Low';
+            const note = (noteCell && noteCell.v) ? String(noteCell.v).trim() : '';
+
+            const cleanKey = model.replace(/[^A-Z0-9]/g, '');
+            dbData[cleanKey] = { rawModel: model, price, priority, note };
+          });
+        });
+
+        document.getElementById('status').innerText = '✅ 清單已同步 (' + Object.keys(dbData).length + ' 款模型)';
+      } catch (e) {
+        document.getElementById('status').innerText = '❌ 同步失敗，請確認 Sheet 權限';
+      }
+    }
+
+    // 2. 輸入法邏輯
+    function selectMode(mode, btn) {
+      selectedMode = mode;
+      document.querySelectorAll('.keypad-left button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      checkAndSearch();
+    }
+
+    function pressNumber(num) {
+      if (inputNumbers.length >= 2) {
+        // 自動滑動覆蓋：踢走舊數字，加入新數字 (例如 "48" -> "89")
+        inputNumbers = inputNumbers.slice(1) + num;
+      } else {
+        inputNumbers += num;
+      }
+      checkAndSearch();
+    }
+
+    function clearNumber() {
+      if (inputNumbers.length > 0) {
+        inputNumbers = inputNumbers.slice(0, -1);
+        hideResults();
+      }
+    }
+
+    function clearAll() {
+      inputNumbers = "";
+      selectedMode = "";
+      document.querySelectorAll('.keypad-left button').forEach(b => b.classList.remove('active'));
+      hideResults();
+    }
+
+    function checkAndSearch() {
+      if (selectedMode && inputNumbers.length === 2) {
+        const queryKey = selectedMode + inputNumbers;
+        const item = dbData[queryKey];
+
+        if (item) {
+          showResult(item.rawModel, item.price, item.priority, item.note);
+        } else {
+          showNotFound();
+        }
+      }
+    }
+
+    // 3. 畫面顯示邏輯
+    function showResult(model, price, priority, note) {
+      document.getElementById('not-found-msg').style.display = 'none';
+
+      const card = document.getElementById('result-card');
+      const modelEl = document.getElementById('result-model');
+      const priceEl = document.getElementById('result-price');
+      const priorityEl = document.getElementById('result-priority');
+      const noteEl = document.getElementById('result-note');
+
+      modelEl.innerText = model;
+      priceEl.innerText = (price !== null && price !== undefined && price !== '')
+        ? `原價：¥${Number(price).toLocaleString()}`
+        : '原價：--';
+      priorityEl.innerText = priority;
+      noteEl.innerText = note ? `備註：${note}` : '（無備註）';
+
+      card.className = '';
+      const prioLower = priority.toLowerCase();
+
+      if (prioLower.includes('very high')) {
+        card.classList.add('bg-very-high');
+      } else if (prioLower.includes('high')) {
+        card.classList.add('bg-high');
+      } else if (prioLower.includes('medium')) {
+        card.classList.add('bg-medium');
+      } else {
+        card.classList.add('bg-low');
+      }
+
+      card.style.display = 'block';
+    }
+
+    function showNotFound() {
+      document.getElementById('result-card').style.display = 'none';
+      document.getElementById('not-found-msg').style.display = 'block';
+    }
+
+    function hideResults() {
+      document.getElementById('result-card').style.display = 'none';
+      document.getElementById('not-found-msg').style.display = 'none';
+    }
+
+    // 頁面載入後自動獲取資料
+    window.addEventListener('DOMContentLoaded', fetchSheetData);
+  </script>
+</body>
+</html>
