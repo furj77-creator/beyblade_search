@@ -2,7 +2,8 @@
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- 加入 user-scalable=no 同 viewport-fit=cover 防止畫面被拉動 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Beyblade X Quick Priority Search</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -59,7 +60,7 @@
     .bg-medium    { background: #e65100 !important; border-color: #ff9800 !important; color: #ffffff; }
     .bg-low       { background: #424242 !important; border-color: #9e9e9e !important; color: #e0e0e0; }
 
-    /* 下半畫面：自訂輸入法 (佔畫面約 1/3) */
+    /* 下半畫面：自訂輸入法 (佔畫面 33vh 約 3分1 高度) */
     #input-keypad-wrap {
       flex: 0 0 33vh; width: 100%;
       display: flex; background: #181818;
@@ -72,6 +73,10 @@
       font-size: 1.3rem; font-weight: bold; cursor: pointer;
       border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
       color: #fff; user-select: none; -webkit-tap-highlight-color: transparent;
+      
+      /* 關鍵修改：徹底禁止 Safari 重複連按時自動放大畫面 (Double-tap zoom) */
+      touch-action: manipulation;
+
       transition: transform 0.06s ease, background-color 0.06s ease, box-shadow 0.06s ease;
       box-shadow: 0 3px 0 rgba(0,0,0,0.6);
     }
