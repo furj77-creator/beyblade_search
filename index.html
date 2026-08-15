@@ -2,7 +2,6 @@
 <html lang="zh-HK">
 <head>
   <meta charset="UTF-8">
-  <!-- 加入 user-scalable=no 同 viewport-fit=cover 防止畫面被拉動 -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Beyblade X Quick Priority Search</title>
   <style>
@@ -15,7 +14,6 @@
       height: 100vh; height: 100dvh;
     }
 
-    /* 上半畫面：顯示結果與輸入狀態 */
     #top-container {
       flex: 1 1 auto; width: 100%; min-height: 0;
       display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
@@ -28,7 +26,6 @@
       background: rgba(255,255,255,0.05); padding: 4px 12px; border-radius: 12px;
     }
 
-    /* 現時輸入顯示欄 */
     #input-preview {
       font-size: 1.8rem; font-weight: 900; color: #00ffcc;
       background: rgba(255,255,255,0.08); border: 1px solid rgba(0,255,204,0.3);
@@ -42,7 +39,6 @@
       margin-top: 5px;
     }
 
-    /* 結果卡片 */
     #result-card {
       width: 100%; max-width: 360px;
       padding: 14px; border-radius: 14px; text-align: center;
@@ -54,13 +50,11 @@
     #result-priority { font-size: 20px; font-weight: 800; margin: 4px 0; text-transform: uppercase; }
     #result-note { font-size: 13px; line-height: 1.3; background: rgba(0,0,0,0.25); padding: 8px; border-radius: 6px; text-align: left; }
 
-    /* 優先級色彩控制 */
     .bg-very-high { background: #1b5e20 !important; border-color: #4caf50 !important; color: #ffffff; }
     .bg-high      { background: #0d47a1 !important; border-color: #2196f3 !important; color: #ffffff; }
     .bg-medium    { background: #e65100 !important; border-color: #ff9800 !important; color: #ffffff; }
     .bg-low       { background: #424242 !important; border-color: #9e9e9e !important; color: #e0e0e0; }
 
-    /* 下半畫面：自訂輸入法 (佔畫面 33vh 約 3分1 高度) */
     #input-keypad-wrap {
       flex: 0 0 33vh; width: 100%;
       display: flex; background: #181818;
@@ -68,26 +62,22 @@
       padding-bottom: env(safe-area-inset-bottom);
     }
 
-    /* 按鈕基礎樣式 + 實體按壓感特效 */
     button {
       font-size: 1.3rem; font-weight: bold; cursor: pointer;
       border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
       color: #fff; user-select: none; -webkit-tap-highlight-color: transparent;
-      
-      /* 關鍵修改：徹底禁止 Safari 重複連按時自動放大畫面 (Double-tap zoom) */
       touch-action: manipulation;
-
-      transition: transform 0.06s ease, background-color 0.06s ease, box-shadow 0.06s ease;
-      box-shadow: 0 3px 0 rgba(0,0,0,0.6);
+      transition: transform 0.05s, background-color 0.05s, box-shadow 0.05s;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.6);
     }
 
-    /* 按壓效果：向下微移 + 縮小 + 消除陰影 */
+    /* 增強按壓視覺回饋 */
     button:active {
-      transform: scale(0.94) translateY(2px);
-      box-shadow: 0 1px 0 rgba(0,0,0,0.6);
+      transform: translateY(4px); /* 下沉幅度加大 */
+      box-shadow: 0 0px 0 rgba(0,0,0,0.6); /* 陰影完全消失，營造按到底的感覺 */
+      background-color: #555 !important; /* 按下時變亮灰 */
     }
 
-    /* 左邊：BX, CX, UX */
     .keypad-left {
       width: 35%; display: flex; flex-direction: column; gap: 6px; padding: 8px;
       background: #101010; border-right: 1px solid rgba(255,255,255,0.1);
@@ -95,31 +85,37 @@
     .keypad-left button {
       flex: 1; background: #282828;
     }
+    
+    /* 模式掣已選狀態 */
     .keypad-left button.active {
       background: #0288d1; border-color: #03a9f4; color: #fff;
       box-shadow: 0 0 8px rgba(3,169,244,0.5);
     }
+    /* 確保已選模式掣按壓時也有反應 */
+    .keypad-left button.active:active {
+      background: #02669e !important;
+    }
 
-    /* 右邊：12宮格數字鍵盤 */
     .keypad-right {
       width: 65%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px;
     }
     .keypad-right button {
       background: #222;
     }
-    .keypad-right button:active { background: #444; }
-    .keypad-right button.btn-del { background-color: #8f2d2d; border-color: #e57373; }
+    .keypad-right button.btn-del { 
+        background-color: #8f2d2d; 
+        border-color: #e57373; 
+    }
+    .keypad-right button.btn-del:active {
+        background-color: #b71c1c !important; /* 刪除掣按下時變深紅 */
+    }
   </style>
 </head>
 <body>
 
-  <!-- 上半畫面：顯示結果卡片 -->
   <div id="top-container">
     <div id="status">正在同步 Google Sheet 資料...</div>
-    
-    <!-- 即時輸入顯示區 -->
     <div id="input-preview">?? - __</div>
-
     <div id="not-found-msg">⚠️ 查無此型號資料</div>
 
     <div id="result-card">
@@ -130,16 +126,13 @@
     </div>
   </div>
 
-  <!-- 下半畫面：自訂輸入法鍵盤 (33vh 高度) -->
   <div id="input-keypad-wrap">
-    <!-- 左邊：模式掣 -->
     <div class="keypad-left">
       <button onclick="selectMode('BX', this)">BX</button>
       <button onclick="selectMode('CX', this)">CX</button>
       <button onclick="selectMode('UX', this)">UX</button>
     </div>
 
-    <!-- 右邊：數字鍵盤 -->
     <div class="keypad-right">
       <button onclick="pressNumber('7')">7</button>
       <button onclick="pressNumber('8')">8</button>
@@ -162,7 +155,14 @@
     let selectedMode = "";
     let inputNumbers = "";
 
-    // 1. 同步 Google Sheet 資料
+    // 觸覺回饋 (震動)
+    function triggerHaptic() {
+      // 檢查瀏覽器是否支援 vibrate API (Android 支援，iOS Safari 預設不支援)
+      if (navigator.vibrate) {
+        navigator.vibrate(20); // 震動 20 毫秒，模擬輕微點擊
+      }
+    }
+
     async function fetchSheetData() {
       try {
         const response = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`);
@@ -171,8 +171,8 @@
 
         const rows = json.table.rows;
         const blocks = [
-          { model: 0, price: 1, priority: 2, note: 3 },  // A, B, C, D
-          { model: 7, price: 8, priority: 9, note: 10 }  // H, I, J, K
+          { model: 0, price: 1, priority: 2, note: 3 },
+          { model: 7, price: 8, priority: 9, note: 10 }
         ];
 
         rows.forEach(row => {
@@ -203,15 +203,14 @@
       }
     }
 
-    // 2. 更新輸入預覽欄位
     function updatePreview() {
       const modeText = selectedMode ? selectedMode : "??";
       const numText = inputNumbers.padEnd(2, '_');
       document.getElementById('input-preview').innerText = `${modeText} - ${numText}`;
     }
 
-    // 3. 輸入法邏輯
     function selectMode(mode, btn) {
+      triggerHaptic(); // 加入震動
       selectedMode = mode;
       document.querySelectorAll('.keypad-left button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -220,8 +219,8 @@
     }
 
     function pressNumber(num) {
+      triggerHaptic(); // 加入震動
       if (inputNumbers.length >= 2) {
-        // 動態替換（推走第一個數字）
         inputNumbers = inputNumbers.slice(1) + num;
       } else {
         inputNumbers += num;
@@ -231,6 +230,7 @@
     }
 
     function clearNumber() {
+      triggerHaptic(); // 加入震動
       if (inputNumbers.length > 0) {
         inputNumbers = inputNumbers.slice(0, -1);
         updatePreview();
@@ -239,6 +239,7 @@
     }
 
     function clearAll() {
+      triggerHaptic(); // 加入震動
       inputNumbers = "";
       selectedMode = "";
       document.querySelectorAll('.keypad-left button').forEach(b => b.classList.remove('active'));
@@ -261,7 +262,6 @@
       }
     }
 
-    // 4. 畫面顯示邏輯
     function showResult(model, price, priority, note) {
       document.getElementById('not-found-msg').style.display = 'none';
 
@@ -304,7 +304,6 @@
       document.getElementById('not-found-msg').style.display = 'none';
     }
 
-    // 頁面載入後自動獲取資料
     window.addEventListener('DOMContentLoaded', fetchSheetData);
   </script>
 </body>
